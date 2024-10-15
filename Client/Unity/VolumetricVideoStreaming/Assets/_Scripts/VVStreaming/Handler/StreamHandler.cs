@@ -40,7 +40,7 @@ public class StreamHandler : MonoBehaviour
 
     void ReadConfig()
     {
-        string configPath = "Assets/config.json";
+        string configPath = "../config.json";
         if (System.IO.File.Exists(configPath))
         {
             StreamKey streamKey = JsonUtility.FromJson<StreamKey>(System.IO.File.ReadAllText(configPath));
