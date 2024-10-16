@@ -85,6 +85,9 @@ os.makedirs(_Output_Path, exist_ok=True)
 
 _Mesh_Files = GetFiles(_Input_Path, _Mesh_Format)
 _Mesh_Files = sorted(_Mesh_Files, key=lambda x: SortFiles(x, _Mesh_Format))
+_Mesh_Output = []
+for meshFile in _Mesh_Files:
+    _Mesh_Output.append(os.path.basename(meshFile).replace(_Mesh_Format, '.drc'))
 
 _Texture_Files = GetFiles(_Input_Path, _Texture_Format)
 _Texture_Files = sorted(_Texture_Files, key=lambda x: SortFiles(x, _Texture_Format))
@@ -97,7 +100,15 @@ if (len(_Audio_Files) > 0):
     _FPS = auto_floor_ceil(len(_Texture_Files) / get_audio_length_ffmpeg(_Audio_Files[0]))
     isAudio = True
 
+for i in range(len(_Mesh_Files)):
+    draco_cli = [
+        f"{_DracoBuildPath}",
+        "-i", _Mesh_Files[i],
+        "-o", f"{_Output_Path}/{_Mesh_Output[i]}"
+    ]
+    subprocess.run(draco_cli)
 
+'''
 for meshFile in _Mesh_Files:
     draco_cli = [
         f"{_DracoBuildPath}",
@@ -105,6 +116,7 @@ for meshFile in _Mesh_Files:
         "-o", f"{_Output_Path}/{os.path.basename(meshFile).replace(_Mesh_Format, '.drc')}"
     ]
     subprocess.run(draco_cli)
+'''
 
 if isAudio:
     ffmpeg_cli_audio = [
@@ -131,19 +143,13 @@ else:
     ]
     subprocess.run(ffmpeg_cli_noaudio)
 
-_Mesh_Names = []
-for meshFile in _Mesh_Files:
-    _Mesh_Names.append(os.path.basename(meshFile))
-
-
-
 _Manifest = {
     "name" : vv_name,
     "fps" : _FPS,
     "audio" : isAudio,
     "count" : len(_Mesh_Files),
     "texture" : "texture.mp4",
-    "meshes" : _Mesh_Names
+    "meshes" : _Mesh_Output
 }
 
 with open(f"{_Output_Path}/manifest.json", "w") as json_file:

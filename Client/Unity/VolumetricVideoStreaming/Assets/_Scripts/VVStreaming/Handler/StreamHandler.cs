@@ -24,18 +24,27 @@ public class StreamHandler : MonoBehaviour
 {
     [HideInInspector]
     public StreamManager streamManager;
-    public bool isUsingConfig = false;
-    public string DomainBaseLink = "";
-    public string VVFolderLinkName = "";
+    public string DomainBaseLink { get; private set; } = "";
+    public string VVFolderLinkName {get; private set; } = "";
+    public VV vvheader;
 
-    void Start()
+    public void SetManager(StreamManager manager)
     {
-        if(isUsingConfig)
+        streamManager = manager;
+    }
+
+    public void LoadHeader()
+    {
+        if(!streamManager.OverideConfigLink)
         {
             ReadConfig();
         }
+        else
+        {
+            SetConfig(streamManager.OverideDomainBaseLink, streamManager.OverideVVFolderLinkName);
+        }
 
-        StartCoroutine(GetJsonData());
+        StartCoroutine(ReadHeader());
     }
 
     void ReadConfig()
@@ -44,12 +53,18 @@ public class StreamHandler : MonoBehaviour
         if (System.IO.File.Exists(configPath))
         {
             StreamKey streamKey = JsonUtility.FromJson<StreamKey>(System.IO.File.ReadAllText(configPath));
-            DomainBaseLink = streamKey.baseLink;
-            VVFolderLinkName = streamKey.folderName;
+
+            SetConfig(streamKey.baseLink, streamKey.folderName);
         }
     }
 
-    IEnumerator GetJsonData()
+    public void SetConfig(string baseLink, string folderName)
+    {
+        DomainBaseLink = baseLink;
+        VVFolderLinkName = folderName;
+    }
+
+    IEnumerator ReadHeader()
     {
         string jsonUrl = $"{DomainBaseLink}/{VVFolderLinkName}/manifest.json";
         using (UnityWebRequest request = UnityWebRequest.Get(jsonUrl))
@@ -62,19 +77,11 @@ public class StreamHandler : MonoBehaviour
             }
             else
             {
-                // Parse the JSON data
                 string jsonData = request.downloadHandler.text;
-                VV data = JsonUtility.FromJson<VV>(jsonData);
-                Debug.Log(data.name);
-                Debug.Log(data.fps);
-                Debug.Log(data.audio);
-                Debug.Log(data.count);
-                Debug.Log(data.texture);
-                foreach (string meshLinkName in data.meshes)
-                {
-                    Debug.Log(meshLinkName);
-                }
+                vvheader = JsonUtility.FromJson<VV>(jsonData);
+                streamManager.FinishLoadHeader();
             }
         }
     }
+
 }
