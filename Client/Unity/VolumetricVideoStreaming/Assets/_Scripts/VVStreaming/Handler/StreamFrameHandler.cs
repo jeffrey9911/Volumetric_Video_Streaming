@@ -1,9 +1,5 @@
-using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Net.Http;
-using System.Threading;
-using System.Threading.Tasks;
 using Draco;
 using UnityEngine;
 using UnityEngine.Networking;
@@ -18,7 +14,7 @@ public class StreamFrameHandler : MonoBehaviour
     
     private Queue<string> downloadQueue = new Queue<string>();
 
-    private DracoMeshLoader draco = new DracoMeshLoader();
+    //private DracoMeshLoader draco = new DracoMeshLoader();
 
 
     public void SetManager(StreamManager manager)
@@ -33,6 +29,8 @@ public class StreamFrameHandler : MonoBehaviour
 
     IEnumerator QueueDownload()
     {
+        if (streamManager.DisplayDebugText) StreamDebugger.instance.DebugText("Queueing Downloads");
+
         foreach (var meshName in streamManager.streamHandler.vvheader.meshes)
         {
             downloadQueue.Enqueue($"{streamManager.streamHandler.DomainBaseLink}/{streamManager.streamHandler.VVFolderLinkName}/{meshName}");
@@ -45,6 +43,8 @@ public class StreamFrameHandler : MonoBehaviour
 
     IEnumerator StartDownload()
     {
+        if (streamManager.DisplayDebugText) StreamDebugger.instance.DebugText("Starting Downloads");
+
         int i = 0;
         while (downloadQueue.Count > 0)
         {
@@ -65,6 +65,8 @@ public class StreamFrameHandler : MonoBehaviour
 
     IEnumerator iHandleDownload(int index, string url)
     {
+        if (streamManager.DisplayDebugText) StreamDebugger.instance.DebugText("Downloading Frame: " + index);
+
         activeThreads++;
 
         using (UnityWebRequest request = UnityWebRequest.Get(url))
@@ -77,7 +79,8 @@ public class StreamFrameHandler : MonoBehaviour
             }
             else
             {
-                var dracoMesh = draco.ConvertDracoMeshToUnity(request.downloadHandler.data);
+                var dracoMesh = DracoDecoder.DecodeMesh(request.downloadHandler.data);
+                //var dracoMesh = draco.ConvertDracoMeshToUnity(request.downloadHandler.data);
 
                 while (!dracoMesh.IsCompleted) yield return null;
 

@@ -41,6 +41,8 @@ public class StreamPlayer : MonoBehaviour
 
     public void InitializePlayer()
     {
+        if (streamManager.DisplayDebugText) StreamDebugger.instance.DebugText("Initializing Player");
+
         PlayerInstance = new GameObject("PlayerInstance");
         PlayerInstance.transform.SetParent(this.transform);
 
@@ -58,17 +60,15 @@ public class StreamPlayer : MonoBehaviour
 
         PlayerInstanceRenderer.material = PlayerInstanceMaterial;
 
-
-
         InitializeTexturePlayer();
     }
 
     private void InitializeTexturePlayer()
     {
+        if (streamManager.DisplayDebugText) StreamDebugger.instance.DebugText("Initializing Texture Player");
+
         TexturePlayer.playOnAwake = false;
         TexturePlayer.isLooping = true;
-        //TexturePlayer.renderMode = VideoRenderMode.MaterialOverride;
-        //TexturePlayer.targetMaterialRenderer = PlayerInstanceRenderer;
         TexturePlayer.renderMode = VideoRenderMode.RenderTexture;
         TexturePlayer.targetTexture = TextureRenderer;
         TexturePlayer.url = $"{streamManager.streamHandler.DomainBaseLink}/{streamManager.streamHandler.VVFolderLinkName}/{streamManager.streamHandler.vvheader.texture}";
@@ -94,6 +94,8 @@ public class StreamPlayer : MonoBehaviour
 
     void AVMSyncPlay()
     {
+        if (streamManager.DisplayDebugText) StreamDebugger.instance.DebugText("AVM Sync Play");
+
         TargetFrame = (int)TexturePlayer.frame;
 
         if ((TargetFrame + TextureOffset) >= streamManager.streamContainer.FrameContainer.Count
@@ -125,6 +127,8 @@ public class StreamPlayer : MonoBehaviour
 
     IEnumerator AVMSyncBuffer()
     {
+        if (streamManager.DisplayDebugText) StreamDebugger.instance.DebugText("AVM Sync Buffer");
+
         Debug.Log("Start Buffering");
         for (int i = 0; i < (int)(BufferTime * streamManager.streamHandler.vvheader.fps); i++)
         {

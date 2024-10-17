@@ -12,6 +12,7 @@ public class StreamManager : MonoBehaviour
     [HideInInspector]
     public StreamPlayer streamPlayer;
 
+    public bool DisplayDebugText = false;
     public bool OverideConfigLink = false;
     public string OverideDomainBaseLink = "";
     public string OverideVVFolderLinkName = "";
@@ -28,22 +29,39 @@ public class StreamManager : MonoBehaviour
         streamFrameHandler.SetManager(this);
         streamContainer.SetManager(this);
         streamPlayer.SetManager(this);
+
+        StreamDebugger.instance.DebugText("Stream Manager Initialized");
     }
 
     [ContextMenu("Start Load Header")]
     public void StartLoadHeader()
     {
-        streamHandler.LoadHeader();
+        try
+        {
+            streamHandler.LoadHeader();
+        }
+        catch (System.Exception e)
+        {
+            StreamDebugger.instance.DebugText(e.Message);
+            throw;
+        }
+        
     }
 
     public void FinishLoadHeader()
     {
-        //Debug.Log($"{streamHandler.DomainBaseLink}/{streamHandler.VVFolderLinkName}/{streamHandler.vvheader.texture}");
-        // Start frame handler, download frame data
-        streamContainer.InitializeFrameContainer(streamHandler.vvheader.count);
-        streamFrameHandler.StartDownloadFrames();
-        
-        streamPlayer.InitializePlayer();
+        try
+        {
+            streamContainer.InitializeFrameContainer(streamHandler.vvheader.count);
+            streamFrameHandler.StartDownloadFrames();
+            
+            streamPlayer.InitializePlayer();
+        }
+        catch (System.Exception e)
+        {
+            StreamDebugger.instance.DebugText(e.Message);
+            throw;
+        }
     }
 
     void OnApplicationQuit()

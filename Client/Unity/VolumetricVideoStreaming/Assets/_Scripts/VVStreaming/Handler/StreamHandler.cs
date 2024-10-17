@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using UnityEngine;
 
@@ -35,6 +36,8 @@ public class StreamHandler : MonoBehaviour
 
     public void LoadHeader()
     {
+        if (streamManager.DisplayDebugText) StreamDebugger.instance.DebugText("Loading Header");
+
         if(!streamManager.OverideConfigLink)
         {
             ReadConfig();
@@ -49,6 +52,8 @@ public class StreamHandler : MonoBehaviour
 
     void ReadConfig()
     {
+        if (streamManager.DisplayDebugText) StreamDebugger.instance.DebugText("Reading Config");
+
         string configPath = "../config.json";
         if (System.IO.File.Exists(configPath))
         {
@@ -60,13 +65,18 @@ public class StreamHandler : MonoBehaviour
 
     public void SetConfig(string baseLink, string folderName)
     {
+        if (streamManager.DisplayDebugText) StreamDebugger.instance.DebugText("Setting Config");
+
         DomainBaseLink = baseLink;
         VVFolderLinkName = folderName;
     }
 
     IEnumerator ReadHeader()
     {
+        if (streamManager.DisplayDebugText) StreamDebugger.instance.DebugText("Reading Header");
+
         string jsonUrl = $"{DomainBaseLink}/{VVFolderLinkName}/manifest.json";
+
         using (UnityWebRequest request = UnityWebRequest.Get(jsonUrl))
         {
             yield return request.SendWebRequest();
@@ -74,6 +84,7 @@ public class StreamHandler : MonoBehaviour
             if (request.result == UnityWebRequest.Result.ConnectionError || request.result == UnityWebRequest.Result.ProtocolError)
             {
                 Debug.LogError(request.error);
+                if (streamManager.DisplayDebugText) StreamDebugger.instance.DebugText(request.error);
             }
             else
             {
