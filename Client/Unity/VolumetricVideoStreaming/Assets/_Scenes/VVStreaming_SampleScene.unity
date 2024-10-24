@@ -747,7 +747,6 @@ GameObject:
   - component: {fileID: 434098191}
   - component: {fileID: 434098190}
   - component: {fileID: 434098194}
-  - component: {fileID: 434098195}
   m_Layer: 5
   m_Name: Canvas
   m_TagString: Untagged
@@ -854,19 +853,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   streamManager: {fileID: 1189316555}
   rawImage: {fileID: 1765644842}
---- !u!114 &434098195
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 434098189}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 68fed88720ec9481d9ff57b5abfd1e7f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  inputField: {fileID: 165950054}
 --- !u!1 &450298093
 GameObject:
   m_ObjectHideFlags: 0
@@ -879,7 +865,6 @@ GameObject:
   - component: {fileID: 450298096}
   - component: {fileID: 450298095}
   - component: {fileID: 450298094}
-  - component: {fileID: 450298098}
   m_Layer: 0
   m_Name: Plane
   m_TagString: Untagged
@@ -977,19 +962,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &450298098
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 450298093}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f505d44e5f86b4014af0db7a31ce46fe, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  streamPlayer: {fileID: 0}
 --- !u!1 &636456629
 GameObject:
   m_ObjectHideFlags: 0
@@ -1129,6 +1101,7 @@ GameObject:
   - component: {fileID: 1189316556}
   - component: {fileID: 1189316555}
   - component: {fileID: 1189316550}
+  - component: {fileID: 1189316557}
   m_Layer: 0
   m_Name: SampleVVStreamingObject
   m_TagString: Untagged
@@ -1184,6 +1157,23 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1189316557
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1189316549}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 68fed88720ec9481d9ff57b5abfd1e7f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  inputField: {fileID: 165950054}
+  Inspector:
+    TextureVideoFrame: 0
+    TargetFrame: 0
+    PlayFrame: 0
 --- !u!1 &1233876220
 GameObject:
   m_ObjectHideFlags: 0

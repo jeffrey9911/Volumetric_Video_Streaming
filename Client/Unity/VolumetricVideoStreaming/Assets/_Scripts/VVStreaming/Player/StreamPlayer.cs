@@ -94,8 +94,8 @@ public class StreamPlayer : MonoBehaviour
 
     void AVMSyncPlay()
     {
-        if (streamManager.DisplayDebugText) StreamDebugger.instance.DebugText("AVM Sync Play");
-
+        //if (streamManager.DisplayDebugText) StreamDebugger.instance.DebugText("AVM Sync Play");
+        if (streamManager.DisplayDebugText) StreamDebugger.instance.Inspector.TextureVideoFrame = (int)TexturePlayer.frame;
         TargetFrame = (int)TexturePlayer.frame;
 
         if ((TargetFrame + TextureOffset) >= streamManager.streamContainer.FrameContainer.Count
@@ -108,6 +108,8 @@ public class StreamPlayer : MonoBehaviour
             TargetFrame += TextureOffset;
         }
 
+        if (streamManager.DisplayDebugText) StreamDebugger.instance.Inspector.TargetFrame = TargetFrame;
+
 
         if (PlayFrame != TargetFrame)
         {
@@ -116,6 +118,7 @@ public class StreamPlayer : MonoBehaviour
                 PlayFrame = TargetFrame;
                 
                 PlayerInstanceMesh.mesh = streamManager.streamContainer.FrameContainer[PlayFrame].mesh;
+                if (streamManager.DisplayDebugText) StreamDebugger.instance.Inspector.PlayFrame = PlayFrame;
             }
             else
             {

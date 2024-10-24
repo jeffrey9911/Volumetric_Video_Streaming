@@ -12,12 +12,13 @@ import time
 
 import math
 
+# Default settings
 _DracoBuildPath = "draco/build/draco_encoder"
 _Mesh_Format = ".obj"
 _Texture_Format = ".jpg"
 _Audio_Format = ".wav"
 _FPS = 30
-
+_Texture_res = 2048
 
 def GetFiles(filePath, fileType):
     files = []
@@ -26,12 +27,9 @@ def GetFiles(filePath, fileType):
             files.append(os.path.join(filePath, fileName))
     return files
 
-def SortFiles(filePath, fileType):
-    fileName = filePath.split("/")[-1]
-    match = re.search(r"_(\d+)" + fileType, fileName)
-    if match:
-        return int(match.group(1))
-    return 0
+
+def natural_sort_key(s):
+    return [int(c) if c.isdigit() else c for c in re.split(r'(\d+)', s)]
 
 def SelectFile(textDisplay):
     root = tk.Tk()
@@ -84,39 +82,36 @@ _Output_Path = os.path.join(_Output_Path, vv_name)
 os.makedirs(_Output_Path, exist_ok=True)
 
 _Mesh_Files = GetFiles(_Input_Path, _Mesh_Format)
-_Mesh_Files = sorted(_Mesh_Files, key=lambda x: SortFiles(x, _Mesh_Format))
+_Mesh_Files.sort(key=natural_sort_key)
+
 _Mesh_Output = []
 for meshFile in _Mesh_Files:
     _Mesh_Output.append(os.path.basename(meshFile).replace(_Mesh_Format, '.drc'))
 
 _Texture_Files = GetFiles(_Input_Path, _Texture_Format)
-_Texture_Files = sorted(_Texture_Files, key=lambda x: SortFiles(x, _Texture_Format))
+_Texture_Files.sort(key=natural_sort_key)
+for i in range(len(_Texture_Files)):
+    os.rename(_Texture_Files[i], f"{_Input_Path}/tex_{i:06d}.jpg")
+_Texture_Files = GetFiles(_Input_Path, _Texture_Format)
+_Texture_Files.sort(key=natural_sort_key)
 
 _Audio_Files = GetFiles(_Input_Path, _Audio_Format)
-_Audio_Files = sorted(_Audio_Files, key=lambda x: SortFiles(x, _Audio_Format))
+_Audio_Files.sort(key=natural_sort_key)
 isAudio = False
 
 if (len(_Audio_Files) > 0):
     _FPS = auto_floor_ceil(len(_Texture_Files) / get_audio_length_ffmpeg(_Audio_Files[0]))
     isAudio = True
 
-for i in range(len(_Mesh_Files)):
-    draco_cli = [
-        f"{_DracoBuildPath}",
-        "-i", _Mesh_Files[i],
-        "-o", f"{_Output_Path}/{_Mesh_Output[i]}"
-    ]
-    subprocess.run(draco_cli)
-
-'''
 for meshFile in _Mesh_Files:
     draco_cli = [
         f"{_DracoBuildPath}",
         "-i", meshFile,
-        "-o", f"{_Output_Path}/{os.path.basename(meshFile).replace(_Mesh_Format, '.drc')}"
+        "-o", f"{_Output_Path}/{os.path.basename(meshFile).replace(_Mesh_Format, '.drc')}",
+        "-cl", "10"
     ]
     subprocess.run(draco_cli)
-'''
+
 
 if isAudio:
     ffmpeg_cli_audio = [
@@ -124,9 +119,12 @@ if isAudio:
         '-framerate', f'{_FPS}',
         '-i', f"{_Input_Path}/{FilePattern(os.path.basename(_Texture_Files[0]))}",
         '-i', _Audio_Files[0],
-        '-c:v', 'libx264',
+        '-c:v', 'libx265',
         '-c:a', 'aac',
-        '-vf', f'fps={_FPS}',
+        '-vf', f'scale={_Texture_res}:{_Texture_res}:force_original_aspect_ratio=decrease,pad={_Texture_res}:{_Texture_res}:(ow-iw)/2:(oh-ih)/2',
+        '-crf', '28',
+        '-preset', 'slower',
+        '-tag:v', 'hvc1',
         '-pix_fmt', 'yuv420p',
         f"{_Output_Path}/texture.mp4"
     ]
@@ -136,8 +134,11 @@ else:
     'ffmpeg',
     '-framerate', f'{_FPS}',
     '-i', f"{_Input_Path}/{FilePattern(os.path.basename(_Texture_Files[0]))}",
-    '-c:v', 'libx264',
-    '-vf', f'fps={_FPS}',
+    '-c:v', 'libx265',
+    '-vf', f'scale={_Texture_res}:{_Texture_res}:force_original_aspect_ratio=decrease,pad={_Texture_res}:{_Texture_res}:(ow-iw)/2:(oh-ih)/2',
+    '-crf', '28',
+    '-preset', 'slower',
+    '-tag:v', 'hvc1',
     '-pix_fmt', 'yuv420p',
     f"{_Output_Path}/texture.mp4"
     ]

@@ -1,5 +1,14 @@
+using System;
 using UnityEngine;
 using UnityEngine.UI;
+
+[Serializable]
+public class StreamDebuggerInspector
+{
+    public int TextureVideoFrame = 0;
+    public int TargetFrame = 0;
+    public int PlayFrame = 0;
+}
 
 public class StreamDebugger : MonoBehaviour
 {
@@ -17,6 +26,8 @@ public class StreamDebugger : MonoBehaviour
         }
     }
     public InputField inputField;
+
+    public StreamDebuggerInspector Inspector;
 
     public void DebugText(string text)
     {

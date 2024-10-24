@@ -9,7 +9,7 @@ public class StreamFrameHandler : MonoBehaviour
     [HideInInspector]
     public StreamManager streamManager;
 
-    public const int DownloadThreads = 60;
+    public const int DownloadThreads = 10;
     private int activeThreads = 0;
     
     private Queue<string> downloadQueue = new Queue<string>();
