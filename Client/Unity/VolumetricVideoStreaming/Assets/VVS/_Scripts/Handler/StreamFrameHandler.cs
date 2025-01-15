@@ -29,7 +29,7 @@ public class StreamFrameHandler : MonoBehaviour
 
     IEnumerator QueueDownload()
     {
-        if (streamManager.DisplayDebugText) StreamDebugger.instance.DebugText("Queueing Downloads");
+        streamManager.SendDebugText("Queueing Downloads");
 
         foreach (var meshName in streamManager.streamHandler.vvheader.meshes)
         {
@@ -43,7 +43,7 @@ public class StreamFrameHandler : MonoBehaviour
 
     IEnumerator StartDownload()
     {
-        if (streamManager.DisplayDebugText) StreamDebugger.instance.DebugText("Starting Downloads");
+        streamManager.SendDebugText("Starting Downloads");
 
         int i = 0;
         while (downloadQueue.Count > 0)
@@ -61,11 +61,48 @@ public class StreamFrameHandler : MonoBehaviour
 
             yield return null;
         }
+/*
+        while (!streamManager.isAllMeshesLoaded)
+        {
+            foreach (var frame in streamManager.streamContainer.FrameContainer)
+            {
+                if (!frame.isLoaded)
+                {
+                    yield return null;
+                    break;
+                }
+
+                streamManager.isAllMeshesLoaded = true;
+                streamManager.SendDebugText("All Meshes Loaded");
+            }
+
+            yield return new WaitForSeconds(.5f);
+        }
+*/
+
+        while (!streamManager.isAllMeshesLoaded)
+        {
+            streamManager.isAllMeshesLoaded = true;
+
+            foreach (var frame in streamManager.streamContainer.FrameContainer)
+            {
+                if (!frame.isLoaded)
+                {
+                    yield return null;
+                    streamManager.isAllMeshesLoaded = false;
+                    break;
+                }
+            }
+
+            yield return new WaitForSeconds(.5f);
+        }
+
+        streamManager.SendDebugText($"{streamManager.streamHandler.vvheader.name}: All Meshes Loaded");
     }
 
     IEnumerator iHandleDownload(int index, string url)
     {
-        if (streamManager.DisplayDebugText) StreamDebugger.instance.DebugText("Downloading Frame: " + index);
+        //streamManager.SendDebugText("Downloading Frame: " + index);
 
         activeThreads++;
 

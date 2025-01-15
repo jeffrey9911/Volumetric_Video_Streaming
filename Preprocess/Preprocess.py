@@ -70,13 +70,16 @@ if not os.path.exists(_DracoBuildPath):
 else:
     print("\nDraco build folder found.")
 
+
+gname = input("\nPlease enter the name of the VV: ")
+
 input("\nClick Enter to select input folder.")
 _Input_Path = SelectFile("Select input folder.")
 
 input("\nClick Enter to select output folder.")
 _Output_Path = SelectFile("Select output folder")
 
-vv_name = "vv-" + str(int(time.time()))
+vv_name = f"vv-{gname}-{str(int(time.time()))}"
 
 _Output_Path = os.path.join(_Output_Path, vv_name)
 os.makedirs(_Output_Path, exist_ok=True)

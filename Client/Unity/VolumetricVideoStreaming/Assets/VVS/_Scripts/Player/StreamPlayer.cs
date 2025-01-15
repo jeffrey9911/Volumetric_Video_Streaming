@@ -13,6 +13,7 @@ public class StreamPlayer : MonoBehaviour
     private MeshRenderer PlayerInstanceRenderer;
     private Material PlayerInstanceMaterial;
     private VideoPlayer TexturePlayer;
+    private AudioSource TextureAudio;
     public RenderTexture TextureRenderer;
 
     public int TextureOffset = 0;
@@ -41,7 +42,7 @@ public class StreamPlayer : MonoBehaviour
 
     public void InitializePlayer()
     {
-        if (streamManager.DisplayDebugText) StreamDebugger.instance.DebugText("Initializing Player");
+        streamManager.SendDebugText("Initializing Player");
 
         PlayerInstance = new GameObject("PlayerInstance");
         PlayerInstance.transform.SetParent(this.transform);
@@ -52,6 +53,13 @@ public class StreamPlayer : MonoBehaviour
         TexturePlayer = PlayerInstance.AddComponent<VideoPlayer>();
         TextureRenderer = new RenderTexture(2048, 2048, 24);
         TextureRenderer.wrapMode = TextureWrapMode.Repeat;
+
+        TextureAudio = PlayerInstance.AddComponent<AudioSource>();
+        TextureAudio.playOnAwake = false;
+        TextureAudio.spatialize = true;
+        
+        TexturePlayer.audioOutputMode = VideoAudioOutputMode.AudioSource;
+        TexturePlayer.SetTargetAudioSource(0, TextureAudio);
 
         PlayerInstanceMaterial = new Material(Shader.Find("Universal Render Pipeline/Lit"));
         PlayerInstanceMaterial.mainTexture = TextureRenderer;
@@ -65,7 +73,7 @@ public class StreamPlayer : MonoBehaviour
 
     private void InitializeTexturePlayer()
     {
-        if (streamManager.DisplayDebugText) StreamDebugger.instance.DebugText("Initializing Texture Player");
+        streamManager.SendDebugText("Initializing Texture Player");
 
         TexturePlayer.playOnAwake = false;
         TexturePlayer.isLooping = true;
@@ -75,10 +83,9 @@ public class StreamPlayer : MonoBehaviour
 
         isPlayerReady = true;
 
-        TexturePlayer.Play();
+        if (streamManager.PlayOnLoad) TexturePlayer.Play();
 
-        // UI Display for testing
-        UIManager.Instance.rawImage.texture = TextureRenderer;
+        streamManager.SetDebugTexturePreview(TextureRenderer);
     }
 
     void CheckOffset()
@@ -95,7 +102,7 @@ public class StreamPlayer : MonoBehaviour
     void AVMSyncPlay()
     {
         //if (streamManager.DisplayDebugText) StreamDebugger.instance.DebugText("AVM Sync Play");
-        if (streamManager.DisplayDebugText) StreamDebugger.instance.Inspector.TextureVideoFrame = (int)TexturePlayer.frame;
+        streamManager.UpdateDebugTextureFrame((int)TexturePlayer.frame);
         TargetFrame = (int)TexturePlayer.frame;
 
         if ((TargetFrame + TextureOffset) >= streamManager.streamContainer.FrameContainer.Count
@@ -108,7 +115,7 @@ public class StreamPlayer : MonoBehaviour
             TargetFrame += TextureOffset;
         }
 
-        if (streamManager.DisplayDebugText) StreamDebugger.instance.Inspector.TargetFrame = TargetFrame;
+        streamManager.UpdateDebugTargetFrame(TargetFrame);
 
 
         if (PlayFrame != TargetFrame)
@@ -118,7 +125,7 @@ public class StreamPlayer : MonoBehaviour
                 PlayFrame = TargetFrame;
                 
                 PlayerInstanceMesh.mesh = streamManager.streamContainer.FrameContainer[PlayFrame].mesh;
-                if (streamManager.DisplayDebugText) StreamDebugger.instance.Inspector.PlayFrame = PlayFrame;
+                streamManager.UpdateDebugPlayFrame(PlayFrame);
             }
             else
             {
@@ -130,9 +137,8 @@ public class StreamPlayer : MonoBehaviour
 
     IEnumerator AVMSyncBuffer()
     {
-        if (streamManager.DisplayDebugText) StreamDebugger.instance.DebugText("AVM Sync Buffer");
+        streamManager.SendDebugText("AVM Sync Start Buffering");
 
-        Debug.Log("Start Buffering");
         for (int i = 0; i < (int)(BufferTime * streamManager.streamHandler.vvheader.fps); i++)
         {
             yield return null;
@@ -144,12 +150,30 @@ public class StreamPlayer : MonoBehaviour
 
             if (!streamManager.streamContainer.FrameContainer[TargetFrame + i].isLoaded)
             {
+                if (TexturePlayer.isPlaying) TexturePlayer.Pause();
                 i--;
                 continue;
             }
         }
 
-        Debug.Log("Buffering Done");
+        streamManager.SendDebugText("AVM Sync End Buffering");
         TexturePlayer.Play();
     }
+
+    public void Play()
+    {
+        TexturePlayer.Play();
+    }
+
+    public void Pause()
+    {
+        TexturePlayer.Pause();
+    } 
+
+    public void Stop()
+    {
+        TexturePlayer.Stop();
+        PlayerInstanceMesh.mesh = null;
+    }
+
 }

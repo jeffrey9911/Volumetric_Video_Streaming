@@ -29,7 +29,7 @@ public class StreamContainer : MonoBehaviour
 
     public void InitializeFrameContainer(int frameCount)
     {
-        if (streamManager.DisplayDebugText) StreamDebugger.instance.DebugText("Initializing Frame Container");
+        streamManager.SendDebugText("Initializing Frame Container");
 
         FrameContainer = new List<VVFrame>();
 
@@ -46,7 +46,7 @@ public class StreamContainer : MonoBehaviour
 
     public void LoadFrame(int index, Mesh mesh)
     {
-        if (streamManager.DisplayDebugText) StreamDebugger.instance.DebugText("Loading Frame: " + index);
+        //streamManager.SendDebugText("Loading Frame: " + index);
 
         FrameContainer[index] = new VVFrame(true, mesh);
 
@@ -60,7 +60,7 @@ public class StreamContainer : MonoBehaviour
 
     void ApplyMeshOffset(Mesh mesh)
     {
-        if (streamManager.DisplayDebugText) StreamDebugger.instance.DebugText("Applying Mesh Offset");
+        streamManager.SendDebugText("Applying Mesh Offset");
 
         float max = float.MaxValue;
         foreach (Vector3 vertex in mesh.vertices)
