@@ -2,6 +2,8 @@
 
 We present our work on the design and development of an open-source freely available streaming solution for streaming 4D volumetric video assets over a network. The aim of this work is to reduce the reliance on proprietary solutions to enhance interoperability of 4D assets that can be streamed between a server and a client.
 
+![Demo gif](https://github.com/jeffrey9911/Volumetric_Video_Streaming/blob/main/Res/02.GIF?raw=true)
+
 ## Setting up
 
 ### Dependencies
@@ -35,7 +37,8 @@ We present our work on the design and development of an open-source freely avail
 
     * Update ```baseLink``` and ```folderName``` by your own Cloudfront distribution domain name and folder name in the S3 bucket.
     * OR, toggle on ```Override Config Link```, and input your Cloudfront distribution domain name and folder name as shown below
-    * ![Sample Picture 01](https://raw.githubusercontent.com/jeffrey9911/Volumetric_Video_Streaming/refs/heads/main/Res/01.png?token=GHSAT0AAAAAAC4UVCGCH57PTXHLFCHEWV7SZ6YQJWA)
+    * ![Sample Picture 01](https://github.com/jeffrey9911/Volumetric_Video_Streaming/blob/main/Res/01.png?raw=true)
+
 * Play
 
 ## Publication
