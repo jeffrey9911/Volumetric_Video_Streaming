@@ -35,7 +35,7 @@ We present our work on the design and development of an open-source freely avail
 
     * Update ```baseLink``` and ```folderName``` by your own Cloudfront distribution domain name and folder name in the S3 bucket.
     * OR, toggle on ```Override Config Link```, and input your Cloudfront distribution domain name and folder name as shown below
-    * ![Sample Picture 01]()
+    * ![Sample Picture 01](https://raw.githubusercontent.com/jeffrey9911/Volumetric_Video_Streaming/refs/heads/main/Res/01.png?token=GHSAT0AAAAAAC4UVCGCH57PTXHLFCHEWV7SZ6YQJWA)
 * Play
 
 ## Publication
