@@ -34,7 +34,7 @@ public class StreamPlayer : MonoBehaviour
 
 
     public int BufferingThreshold = 1;
-    public int ForwardBufferingTime = 2;
+    public int ForwardBufferingTime = 5;
     public int BufferDroppingTime = 1;
     private bool isCheckingBuffer = false;
     private bool isDroppingBuffer = false;
@@ -204,9 +204,9 @@ public class StreamPlayer : MonoBehaviour
             isNeedingBuffer = false;
         }
 
-        for (int i = 1; i < BufferDroppingTime * streamManager.streamHandler.vvheader.fps; i++)
+        for (int i = 0; i < BufferDroppingTime * streamManager.streamHandler.vvheader.fps; i++)
         {
-            int droppingFrame = PlayFrame - i;
+            int droppingFrame = PlayFrame - (i + 5);
             if (droppingFrame < 0)
             {
                 droppingFrame = streamManager.streamContainer.FrameContainer.Count + droppingFrame;

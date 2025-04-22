@@ -155,7 +155,6 @@ public class StreamFrameHandler : MonoBehaviour
                 request.Dispose();
 
                 streamManager.streamContainer.LoadFrame(index, dracoMesh.Result);
-                Debug.Log($"Frame {index} Loaded");
             }
         }
 
