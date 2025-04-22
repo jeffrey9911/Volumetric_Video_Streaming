@@ -9,23 +9,26 @@ public class StreamRTDebuggerInspector
     public int TextureFrame = 0;
     public int TargetFrame = 0;
     public int PlayFrame = 0;
-    public RawImage TextureVideoRender;
+    public Texture TextureVideoTexture;
 }
 
 public class StreamDebugger : MonoBehaviour
 {
     public StreamManager streamManager;
-    public Text textDebug;
-    public StreamRTDebuggerInspector Inspector;
-
     public void SetManager(StreamManager manager)
     {
         streamManager = manager;
     }
 
+    public Text textDebug;
+    public StreamRTDebuggerInspector Inspector;
+
     public void DebugText(string text)
     {
-        textDebug.text += $"[{DateTime.Now.ToString("HH:mm:ss")}] {text} \n";
+        string textToDisplay = $"[{DateTime.Now.ToString("HH:mm:ss")}] - [{text}]\n";
+        Debug.Log(textToDisplay);
+        if ( textDebug == null) return;
+        textDebug.text += textToDisplay;
     }
 
 

@@ -15,67 +15,45 @@ public class VV
     public string[] meshes;
 }
 
-public class StreamKey
-{
-    public string baseLink;
-    public string folderName;
-}
-
 public class StreamHandler : MonoBehaviour
 {
     [HideInInspector]
     public StreamManager streamManager;
-    public string DomainBaseLink { get; private set; } = "";
-    public string VVFolderLinkName {get; private set; } = "";
-    public VV vvheader;
-
     public void SetManager(StreamManager manager)
     {
         streamManager = manager;
     }
+    public bool isRunning { get; private set; } = false;
+    public bool isReady { get; private set; } = false;
 
-    public void LoadHeader()
+    public VV vvheader;
+
+    Action onCompleteCallback;
+
+    public void InitializeHandler(Action onComplete = null)
     {
-        streamManager.SendDebugText("Loading Header");
+        if (isRunning)
+        {
+            streamManager.SendDebugText("Already Running", this);
+            return;
+        }
+        else if (isReady)
+        {
+            streamManager.SendDebugText("Already Ready", this);
+            return;
+        }
 
-        if(!streamManager.OverideConfigLink)
-        {
-            ReadConfig();
-        }
-        else
-        {
-            SetConfig(streamManager.OverideDomainBaseLink, streamManager.OverideVVFolderLinkName);
-        }
+        isRunning = true;
+        onCompleteCallback = onComplete;
 
         StartCoroutine(ReadHeader());
     }
 
-    void ReadConfig()
-    {
-        streamManager.SendDebugText("Reading Config");
-
-        string configPath = "../config.json";
-        if (System.IO.File.Exists(configPath))
-        {
-            StreamKey streamKey = JsonUtility.FromJson<StreamKey>(System.IO.File.ReadAllText(configPath));
-
-            SetConfig(streamKey.baseLink, streamKey.folderName);
-        }
-    }
-
-    public void SetConfig(string baseLink, string folderName)
-    {
-        streamManager.SendDebugText("Setting Config");
-
-        DomainBaseLink = baseLink;
-        VVFolderLinkName = folderName;
-    }
-
     IEnumerator ReadHeader()
     {
-        streamManager.SendDebugText("Reading Header");
+        streamManager.SendDebugText("Header Loading", this);
 
-        string jsonUrl = $"{DomainBaseLink}/{VVFolderLinkName}/manifest.json";
+        string jsonUrl = $"{streamManager.LinkToFolder}/manifest.json";
 
         using (UnityWebRequest request = UnityWebRequest.Get(jsonUrl))
         {
@@ -83,14 +61,19 @@ public class StreamHandler : MonoBehaviour
 
             if (request.result == UnityWebRequest.Result.ConnectionError || request.result == UnityWebRequest.Result.ProtocolError)
             {
-                Debug.LogError(request.error);
-                streamManager.SendDebugText(request.error);
+                streamManager.SendDebugText(request.error, this);
             }
             else
             {
                 string jsonData = request.downloadHandler.text;
                 vvheader = JsonUtility.FromJson<VV>(jsonData);
-                streamManager.FinishLoadHeader();
+
+
+                isReady = true;
+                isRunning = false;
+                streamManager.SendDebugText("Header Loaded", this);
+
+                onCompleteCallback?.Invoke();
             }
         }
     }

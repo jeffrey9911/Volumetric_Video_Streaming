@@ -1,15 +1,24 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
 public class VVFrame
 {
     public bool isLoaded = false;
+    public string link;
     public Mesh mesh;
 
-    public VVFrame(bool isLoad, Mesh meshdata)
+    public VVFrame(bool isLoad, string url, Mesh meshdata)
     {
         this.isLoaded = isLoad;
+        this.link = url;
         this.mesh = meshdata;
+    }
+
+    public void LoadMesh(Mesh meshdata)
+    {
+        mesh = meshdata;
+        isLoaded = true;
     }
 }
 
@@ -17,60 +26,61 @@ public class StreamContainer : MonoBehaviour
 {
     [HideInInspector]
     public StreamManager streamManager;
-    public List<VVFrame> FrameContainer;
-
-    public Vector3 MeshOffset { get; private set; }
-    public bool isOffestReady {get; private set; } = false;
-
     public void SetManager(StreamManager manager)
     {
         streamManager = manager;
     }
 
-    public void InitializeFrameContainer(int frameCount)
-    {
-        streamManager.SendDebugText("Initializing Frame Container");
+    public List<VVFrame> FrameContainer;
 
+    public void InitializeContainer(Action onComplete)
+    {
         FrameContainer = new List<VVFrame>();
 
-        for (int i = 0; i < frameCount; i++)
+        for (int i = 0; i < streamManager.streamHandler.vvheader.count; i++)
         {
-            FrameContainer.Add(new VVFrame(false, null));
+            FrameContainer.Add(new VVFrame(false, $"{streamManager.LinkToFolder}/{streamManager.streamHandler.vvheader.meshes[i]}", null));
         }
 
-        MeshOffset = new Vector3(0, 0, 0);
+        streamManager.SendDebugText("Frame Container Initialized", this);
 
-        // container size
-        Debug.Log("Frame Container Initialized with size: " + FrameContainer.Count);
+        onComplete?.Invoke();
     }
 
     public void LoadFrame(int index, Mesh mesh)
     {
-        //streamManager.SendDebugText("Loading Frame: " + index);
-
-        FrameContainer[index] = new VVFrame(true, mesh);
-
-        if (!isOffestReady)
+        if (FrameContainer[index].mesh != null)
         {
-            ApplyMeshOffset(mesh);
+            UnloadFrame(index);
+        }
 
-            isOffestReady = true;
+        mesh.name = "Frame_" + index;
+        FrameContainer[index].LoadMesh(mesh);
+
+        if (!streamManager.streamPlayer.isOffsetApplied) 
+        {
+            streamManager.streamPlayer.AppyOffset(mesh);
         }
     }
 
-    void ApplyMeshOffset(Mesh mesh)
+    public void UnloadFrame(int index)
     {
-        streamManager.SendDebugText("Applying Mesh Offset");
-
-        float max = float.MaxValue;
-        foreach (Vector3 vertex in mesh.vertices)
+        if (FrameContainer[index].mesh != null)
         {
-            if (vertex.y < max)
-            {
-                max = vertex.y;
-            }
+            Destroy(FrameContainer[index].mesh);
         }
 
-        MeshOffset = new Vector3(0, -max, 0);
+        FrameContainer[index] = new VVFrame(false, FrameContainer[index].link, null);
     }
+
+    public void UnloadFrames(int index, int count)
+    {
+        for (int i = index; i < index + count; i++)
+        {
+            if (i >= FrameContainer.Count) break;
+            if (i < 0) continue;
+            UnloadFrame(i);
+        }
+    }
+
 }
