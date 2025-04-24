@@ -116,6 +116,7 @@ public class StreamContainer : MonoBehaviour
 
         if (FrameContainer[index].mesh != null)
         {
+            Destroy(FrameContainer[index].mesh);
             FrameContainer[index].UnloadMesh();
         }
     }
