@@ -6,7 +6,7 @@ public class StreamManager : MonoBehaviour
     {
         public bool isInitialized = false;
         public bool isPlayerReady = false;
-        public bool isPreloaded = false;
+        public bool isPreCached = false;
         public bool isTexturePreviewReady = false;
     }
 
@@ -22,19 +22,23 @@ public class StreamManager : MonoBehaviour
     [HideInInspector]
     public StreamDebugger streamDebugger;
 
-    [Header("Streaming Settings")]
+    [Header("Streamer Settings")]
     public string LinkToFolder = "";
-    //public bool EnableChunkedStreaming = false;
     public bool EnableStreamDebugger = false;
-    
-
     public StreamerStatus streamerStatus = new StreamerStatus();
+    bool EnablePreCache = false;
+    public int DownloadThreads = 30;
+
 
     [Header("Player Offset")]
     public Vector3 PositionOffset = Vector3.zero;
     public Vector3 RotationOffset = Vector3.zero;
     public Vector3 ScaleOffset = Vector3.one;
-    bool isPlayOnLoad = true;
+
+    [Header("Chunk Settings")]
+    public int ChunkForwardThresholdInSeconds = 1;
+    public int ChunkForwardBufferingTimeInSeconds = 5;
+    public int ChunkBufferDroppingTimeInSeconds = 1;
 
     void InitializeStreamer()
     {
@@ -79,7 +83,7 @@ public class StreamManager : MonoBehaviour
     [ContextMenu("Play")]
     public void Play()
     {
-        isPlayOnLoad = true;
+        EnablePreCache = false;
 
         if (!streamerStatus.isInitialized) InitializeStreamer();
 
@@ -94,9 +98,9 @@ public class StreamManager : MonoBehaviour
     }
 
     [ContextMenu("PreLoad Meshes")]
-    public void PreLoadMeshes()
+    public void PreCacheMeshes()
     {
-        isPlayOnLoad = false;
+        EnablePreCache = true;
         
         if (!streamerStatus.isInitialized) InitializeStreamer();
 
@@ -132,11 +136,18 @@ public class StreamManager : MonoBehaviour
     void OnPlayerReady()
     {
         streamerStatus.isPlayerReady = true;
+        SetPlayerBufferingTime(ChunkForwardThresholdInSeconds, ChunkForwardBufferingTimeInSeconds, ChunkBufferDroppingTimeInSeconds);
 
-        if (isPlayOnLoad) streamPlayer.Play();
-        else streamFrameHandler.StartPreloadFrames();
+
+        if (!EnablePreCache) streamPlayer.Play();
+        else streamFrameHandler.StartPreCacheFrames();
     }
 
+    public void SetDownloadThreads(int threads)
+    {
+        DownloadThreads = threads;
+        streamFrameHandler.SetDownloadThreads(threads);
+    }
 
     public void SetPlayerBufferingTime(int threshold, int forward, int backward)
     {

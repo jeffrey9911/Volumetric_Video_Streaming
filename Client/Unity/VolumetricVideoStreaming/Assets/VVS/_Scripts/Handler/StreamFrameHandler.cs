@@ -2,10 +2,8 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using Draco;
-using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.Networking;
-using UnityEngine.UIElements;
 
 public class StreamFrameHandler : MonoBehaviour
 {
@@ -16,47 +14,59 @@ public class StreamFrameHandler : MonoBehaviour
         streamManager = manager;
     }
 
-    public const int DownloadThreads = 10;
+    public int DownloadThreads = 60;
     private int activeThreads = 0;
 
     private Queue<int> BufferingFrameQueue = new Queue<int>();
     private Queue<int> DroppingFrameQueue = new Queue<int>();
+
+    private Queue<int> CachingFrameQueue = new Queue<int>();
+
     private bool isBuffering = false;
 
-
-
-    public void StartPreloadFrames()
+    public void SetDownloadThreads(int threads)
     {
-        if (streamManager.streamerStatus.isPreloaded)
+        if (threads < 1)
+        {
+            streamManager.SendDebugText("Download Threads must be greater than 0", this);
+            return;
+        }
+
+        DownloadThreads = threads;
+    }
+
+    public void StartPreCacheFrames()
+    {
+        if (streamManager.streamerStatus.isPreCached)
         {
             streamManager.SendDebugText("Already Preloaded", this);
             return;
         }
 
-        StartCoroutine(PreloadFrames());
+        StartCoroutine(PreCacheFrames());
     }
 
-    IEnumerator PreloadFrames()
+    IEnumerator PreCacheFrames()
     {
-        streamManager.SendDebugText("Preloading Downloads", this);
+        streamManager.SendDebugText("PreCaching Downloads", this);
 
         for (int i = 0; i < streamManager.streamContainer.FrameContainer.Count; i++)
         {
-            if (streamManager.streamContainer.FrameContainer[i].isLoaded) continue;
+            if (streamManager.streamContainer.FrameContainer[i].isCached) continue;
 
-            BufferingFrameAt(i);
+            CachingFrameAt(i);
 
             yield return null;
         }
 
-        while (!streamManager.streamerStatus.isPreloaded)
+        while (!streamManager.streamerStatus.isPreCached)
         {
-            streamManager.streamerStatus.isPreloaded = true;
+            streamManager.streamerStatus.isPreCached = true;
             foreach (var frame in streamManager.streamContainer.FrameContainer)
             {
-                if (!frame.isLoaded)
+                if (!frame.isCached)
                 {
-                    streamManager.streamerStatus.isPreloaded = false;
+                    streamManager.streamerStatus.isPreCached = false;
                     break;
                 }
 
@@ -64,9 +74,9 @@ public class StreamFrameHandler : MonoBehaviour
                 yield return null;
             }
 
-            if (streamManager.streamerStatus.isPreloaded)
+            if (streamManager.streamerStatus.isPreCached)
             {
-                streamManager.SendDebugText("Preload Complete", this);
+                streamManager.SendDebugText("PreCache Complete", this);
                 break;
             }
 
@@ -82,6 +92,7 @@ public class StreamFrameHandler : MonoBehaviour
 
         StartCoroutine(FrameBufferingDownload());
         StartCoroutine(FrameDroppingDownload());
+        StartCoroutine(FrameCachingDownload());
     }
 
     public void StopBuffering()
@@ -110,7 +121,20 @@ public class StreamFrameHandler : MonoBehaviour
         {
             while (activeThreads < DownloadThreads && BufferingFrameQueue.Count > 0)
             {
-                StartCoroutine(iHandleDownload(BufferingFrameQueue.Dequeue()));
+                StartCoroutine(iHandleLoad(BufferingFrameQueue.Dequeue()));
+            }
+
+            yield return null;
+        }
+    }
+
+    IEnumerator FrameCachingDownload()
+    {
+        while (isBuffering)
+        {
+            while (activeThreads < DownloadThreads && CachingFrameQueue.Count > 0)
+            {
+                StartCoroutine(iHandleCache(CachingFrameQueue.Dequeue()));
             }
 
             yield return null;
@@ -119,6 +143,7 @@ public class StreamFrameHandler : MonoBehaviour
 
     public void DroppingFrameAt(int index)
     {
+        if (index < 0 || index >= streamManager.streamContainer.FrameContainer.Count) return;
         if (!streamManager.streamContainer.FrameContainer[index].isLoaded) return;
 
         DroppingFrameQueue.Enqueue(index);
@@ -126,35 +151,129 @@ public class StreamFrameHandler : MonoBehaviour
 
     public void BufferingFrameAt(int index)
     {
+        if (index < 0 || index >= streamManager.streamContainer.FrameContainer.Count) return;
         if (streamManager.streamContainer.FrameContainer[index].isLoaded) return;
 
         BufferingFrameQueue.Enqueue(index);
     }
 
-    IEnumerator iHandleDownload(int index)
+    public void CachingFrameAt(int index)
+    {
+        if (index < 0 || index >= streamManager.streamContainer.FrameContainer.Count) return;
+        if (streamManager.streamContainer.FrameContainer[index].isLoaded) return;
+
+        CachingFrameQueue.Enqueue(index);
+    }
+
+    IEnumerator iHandleLoad(int index)
     {
         activeThreads++;
 
-        using (UnityWebRequest request = UnityWebRequest.Get(streamManager.streamContainer.FrameContainer[index].link))
+        VVFrame frame = streamManager.streamContainer.FrameContainer[index];
+
+        if (frame.isLoaded)
         {
-            yield return request.SendWebRequest();
+            activeThreads--;
+            yield break;
+        }
 
-            if (request.result == UnityWebRequest.Result.ConnectionError || request.result == UnityWebRequest.Result.ProtocolError)
+        if (frame.isCached)
+        {
+            byte[] cachedData = System.IO.File.ReadAllBytes(frame.cachePath);
+
+            var dracoMesh = DracoDecoder.DecodeMesh(cachedData);
+
+            while (!dracoMesh.IsCompleted) yield return null;
+            
+            streamManager.streamContainer.LocalLoadFrame(index, dracoMesh.Result);
+        }
+        else
+        {
+            using (UnityWebRequest request = UnityWebRequest.Get(frame.link))
             {
-                streamManager.SendDebugText(request.error, this);
+                yield return request.SendWebRequest();
+
+                if (request.result == UnityWebRequest.Result.ConnectionError || request.result == UnityWebRequest.Result.ProtocolError)
+                {
+                    streamManager.SendDebugText($"Frame {index}: {request.error}", this);
+
+                    if (request.responseCode == 423)
+                    {
+                        BufferingFrameAt(index);
+                    }
+                }
+                else
+                {
+                    string cacheDirec = $"{Application.temporaryCachePath}/VVCache/{streamManager.streamHandler.vvheader.name}/";
+
+                    if (!System.IO.Directory.Exists(cacheDirec))
+                    {
+                        System.IO.Directory.CreateDirectory(cacheDirec);
+                    }
+
+                    cacheDirec += $"frame_{index}.drc";
+                    System.IO.File.WriteAllBytes(cacheDirec, request.downloadHandler.data);
+
+                    //var dracoMesh = draco.ConvertDracoMeshToUnity(request.downloadHandler.data);
+                    var dracoMesh = DracoDecoder.DecodeMesh(request.downloadHandler.data);
+
+                    while (!dracoMesh.IsCompleted) yield return null;
+
+                    streamManager.streamContainer.CacheLoadFrame(index, dracoMesh.Result, cacheDirec);
+
+                    request.downloadHandler.Dispose();
+                    request.Dispose();
+                }
             }
-            else
+        }
+
+        activeThreads--;
+    }
+
+
+    IEnumerator iHandleCache(int index)
+    {
+        activeThreads++;
+
+        VVFrame frame = streamManager.streamContainer.FrameContainer[index];
+
+        if (frame.isCached)
+        {
+            activeThreads--;
+            yield break;
+        }
+        else
+        {
+            using (UnityWebRequest request = UnityWebRequest.Get(frame.link))
             {
-                var dracoMesh = DracoDecoder.DecodeMesh(request.downloadHandler.data);
-                //var dracoMesh = draco.ConvertDracoMeshToUnity(request.downloadHandler.data);
+                yield return request.SendWebRequest();
 
-                while (!dracoMesh.IsCompleted) yield return null;
+                if (request.result == UnityWebRequest.Result.ConnectionError || request.result == UnityWebRequest.Result.ProtocolError)
+                {
+                    streamManager.SendDebugText($"Frame {index}: {request.error}", this);
 
-                // clean the downloaded data
-                request.downloadHandler.Dispose();
-                request.Dispose();
+                    if (request.responseCode == 423)
+                    {
+                        CachingFrameAt(index);
+                    }
+                }
+                else
+                {
+                    string cacheDirec = $"{Application.temporaryCachePath}/VVCache/{streamManager.streamHandler.vvheader.name}/";
 
-                streamManager.streamContainer.LoadFrame(index, dracoMesh.Result);
+                    if (!System.IO.Directory.Exists(cacheDirec))
+                    {
+                        System.IO.Directory.CreateDirectory(cacheDirec);
+                    }
+
+                    cacheDirec += $"frame_{index}.drc";
+                    System.IO.File.WriteAllBytes(cacheDirec, request.downloadHandler.data);
+
+                    streamManager.streamContainer.CacheFrame(index, cacheDirec);
+
+                    request.downloadHandler.Dispose();
+                    request.Dispose();
+                }
             }
         }
 

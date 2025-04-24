@@ -33,17 +33,12 @@ public class StreamPlayer : MonoBehaviour
     private int PlayFrame = 0;
 
 
-    public int BufferingThreshold = 1;
-    public int ForwardBufferingTime = 5;
-    public int BufferDroppingTime = 1;
+    public float BufferingThreshold = 1;
+    public float ForwardBufferingTime = 2;
+    public float BufferDroppingTime = 1;
     private bool isCheckingBuffer = false;
-    private bool isDroppingBuffer = false;
     private bool isWaitingBuffer = false;
     private bool isNeedingBuffer = false;
-
-
-
-
 
 
     void Update()
@@ -53,7 +48,6 @@ public class StreamPlayer : MonoBehaviour
             if (TexturePlayer.isPlaying) SyncFrame();
         }
     }
-
 
     public void InitializePlayer(Action onComplete, Vector3 positionOffset, Vector3 rotationOffset, Vector3 scaleOffset)
     {
@@ -149,10 +143,13 @@ public class StreamPlayer : MonoBehaviour
         StartCheckBufferingChunk();
         if (streamManager.streamContainer.FrameContainer[TargetFrame].isLoaded)
         {
+            streamManager.streamFrameHandler.DroppingFrameAt(PlayFrame);
             PlayFrame = TargetFrame;
 
             PlayerInstanceMesh.sharedMesh = null;
             PlayerInstanceMesh.sharedMesh = streamManager.streamContainer.FrameContainer[PlayFrame].mesh;
+
+
             streamManager.UpdateDebugPlayFrame(PlayFrame);
         }
         else
@@ -171,11 +168,15 @@ public class StreamPlayer : MonoBehaviour
     {
 
         if (isCheckingBuffer) yield break;
-        //if (isDroppingBuffer) yield break;
 
         isCheckingBuffer = true;
 
-        for (int i = 0; i < BufferingThreshold * streamManager.streamHandler.vvheader.fps; i++)
+
+        int ThresholdIndex = (int)(BufferingThreshold * streamManager.streamHandler.vvheader.fps);
+        int BufferingIndex = (int)(ForwardBufferingTime * streamManager.streamHandler.vvheader.fps);
+        int DroppingAmount = (int)(BufferDroppingTime * streamManager.streamHandler.vvheader.fps);
+
+        for (int i = 0; i < ThresholdIndex; i++)
         {
             int bufferingFrame = PlayFrame + i;
             if (bufferingFrame >= streamManager.streamContainer.FrameContainer.Count)
@@ -190,7 +191,7 @@ public class StreamPlayer : MonoBehaviour
 
         if (isNeedingBuffer)
         {
-            for (int i = 0; i < ForwardBufferingTime * streamManager.streamHandler.vvheader.fps; i++)
+            for (int i = 0; i < BufferingIndex; i++)
             {
                 int bufferingFrame = PlayFrame + i;
                 if (bufferingFrame >= streamManager.streamContainer.FrameContainer.Count)
@@ -204,12 +205,36 @@ public class StreamPlayer : MonoBehaviour
             isNeedingBuffer = false;
         }
 
-        for (int i = 0; i < BufferDroppingTime * streamManager.streamHandler.vvheader.fps; i++)
+        
+/*
+        for (int i = 0; i < DroppingAmount; i++)
         {
-            int droppingFrame = PlayFrame - (i + 5);
+            int droppingFrame = PlayFrame - ThresholdIndex - i;
+
             if (droppingFrame < 0)
             {
                 droppingFrame = streamManager.streamContainer.FrameContainer.Count + droppingFrame;
+                if (droppingFrame <= BufferingIndex)
+                {
+                    continue;
+                }
+            }
+            else
+            {
+                if (BufferingIndex >= streamManager.streamContainer.FrameContainer.Count)
+                {
+                    if (droppingFrame <= BufferingIndex - streamManager.streamContainer.FrameContainer.Count)
+                    {
+                        continue;
+                    }
+                }
+                else
+                {
+                    if (droppingFrame <= BufferingIndex)
+                    {
+                        continue;
+                    }
+                }
             }
 
             if (streamManager.streamContainer.FrameContainer[droppingFrame].isLoaded)
@@ -219,11 +244,13 @@ public class StreamPlayer : MonoBehaviour
 
             yield return null;
         }
-
+*/
 
         isCheckingBuffer = false;
     }
 
+
+    
     IEnumerator BufferingWait()
     {
         if (isWaitingBuffer) yield break;
@@ -233,17 +260,28 @@ public class StreamPlayer : MonoBehaviour
         streamManager.SendDebugText("Buffering Wait", this);
         TexturePlayer.Pause();
 
+        float BufferingWaitTime = 0;
+
         for (int i = 0; i < (int)(ForwardBufferingTime * streamManager.streamHandler.vvheader.fps); i++)
         {
-            if ((PlayFrame + i) >= streamManager.streamContainer.FrameContainer.Count)
+            int bufferingFrame = PlayFrame + i;
+            if (bufferingFrame >= streamManager.streamContainer.FrameContainer.Count)
             {
-                break;
+                bufferingFrame = bufferingFrame - streamManager.streamContainer.FrameContainer.Count;
             }
 
             if (!streamManager.streamContainer.FrameContainer[PlayFrame + i].isLoaded)
             {
                 yield return new WaitForSeconds(1f / streamManager.streamHandler.vvheader.fps);
+                BufferingWaitTime += 1f / streamManager.streamHandler.vvheader.fps;
                 i--;
+            }
+
+            if (BufferingWaitTime >= BufferingThreshold)
+            {
+                streamManager.SendDebugText("Buffering Wait Time Exceeded", this);
+                StartCheckBufferingChunk();
+                BufferingWaitTime = 0;
             }
 
             yield return null;
@@ -271,5 +309,17 @@ public class StreamPlayer : MonoBehaviour
         TexturePlayer.Stop();
         PlayerInstanceMesh.mesh = null;
     }
-
+    
+    void OnDestroy()
+    {
+        if (TextureRenderer != null)
+        {
+            TextureRenderer.Release();
+            Destroy(TextureRenderer);
+        }
+        if (PlayerInstanceMaterial != null)
+        {
+            Destroy(PlayerInstanceMaterial);
+        }
+    }
 }
