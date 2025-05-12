@@ -12,13 +12,16 @@ import time
 
 import math
 
+import queue
+
 # Default settings
 _DracoBuildPath = "draco/build/draco_encoder"
 _Mesh_Format = ".obj"
-_Texture_Format = ".jpg"
+_Texture_Format = ".png"
 _Audio_Format = ".wav"
 _FPS = 30
-_Texture_res = 2048
+_Texture_res_w = 2048
+_Texture_res_h = 1024
 
 def GetFiles(filePath, fileType):
     files = []
@@ -94,7 +97,7 @@ for meshFile in _Mesh_Files:
 _Texture_Files = GetFiles(_Input_Path, _Texture_Format)
 _Texture_Files.sort(key=natural_sort_key)
 for i in range(len(_Texture_Files)):
-    os.rename(_Texture_Files[i], f"{_Input_Path}/tex_{i:06d}.jpg")
+    os.rename(_Texture_Files[i], f"{_Input_Path}/tex_{i:06d}{_Texture_Format}")
 _Texture_Files = GetFiles(_Input_Path, _Texture_Format)
 _Texture_Files.sort(key=natural_sort_key)
 
@@ -124,7 +127,7 @@ if isAudio:
         '-i', _Audio_Files[0],
         '-c:v', 'libx265',
         '-c:a', 'aac',
-        '-vf', f'scale={_Texture_res}:{_Texture_res}:force_original_aspect_ratio=decrease,pad={_Texture_res}:{_Texture_res}:(ow-iw)/2:(oh-ih)/2',
+        '-vf', f'scale={_Texture_res_w}:{_Texture_res_h}:force_original_aspect_ratio=decrease,pad={_Texture_res_w}:{_Texture_res_h}:(ow-iw)/2:(oh-ih)/2',
         '-crf', '28',
         '-preset', 'slower',
         '-tag:v', 'hvc1',
@@ -138,7 +141,7 @@ else:
     '-framerate', f'{_FPS}',
     '-i', f"{_Input_Path}/{FilePattern(os.path.basename(_Texture_Files[0]))}",
     '-c:v', 'libx265',
-    '-vf', f'scale={_Texture_res}:{_Texture_res}:force_original_aspect_ratio=decrease,pad={_Texture_res}:{_Texture_res}:(ow-iw)/2:(oh-ih)/2',
+    '-vf', f'scale={_Texture_res_w}:{_Texture_res_h}:force_original_aspect_ratio=decrease,pad={_Texture_res_w}:{_Texture_res_h}:(ow-iw)/2:(oh-ih)/2',
     '-crf', '28',
     '-preset', 'slower',
     '-tag:v', 'hvc1',
@@ -146,6 +149,8 @@ else:
     f"{_Output_Path}/texture.mp4"
     ]
     subprocess.run(ffmpeg_cli_noaudio)
+
+
 
 _Manifest = {
     "name" : vv_name,
@@ -158,5 +163,32 @@ _Manifest = {
 
 with open(f"{_Output_Path}/manifest.json", "w") as json_file:
     json.dump(_Manifest, json_file)
+
+
+DropCount = 0
+_Missing_Meshes = queue.Queue(maxsize=0)
+for meshFile in _Mesh_Output:
+    if not os.path.exists(f"{_Output_Path}/{meshFile}"):
+        _Missing_Meshes.put(meshFile)
+    else:
+        while not _Missing_Meshes.empty():
+            missing_file = _Missing_Meshes.get()
+            DropCount += 1
+            with open(f"{_Output_Path}/{meshFile}", "rb") as f:
+                data = f.read()
+            with open(f"{_Output_Path}/{missing_file}", "wb") as f:
+                f.write(data)
+            print(f"Duplicated {missing_file} from {meshFile}.")
+
+while not _Missing_Meshes.empty():
+    missing_file = _Missing_Meshes.get()
+    with open(f"{_Output_Path}/{_Mesh_Output[0]}", "rb") as f:
+        data = f.read()
+    with open(f"{_Output_Path}/{missing_file}", "wb") as f:
+        f.write(data)
+    print(f"Duplicated {missing_file} from {_Mesh_Output[0]}.")
+
+print(f"\n{DropCount} dropped meshes.")
+            
 
 input("\nDone. Click Enter to exit.")

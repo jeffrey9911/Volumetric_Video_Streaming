@@ -1,9 +1,8 @@
 using System;
 using System.Collections;
-using System.Collections.Generic;
-using Unity.VisualScripting;
+using System.IO;
+using System.Runtime.InteropServices;
 using UnityEngine;
-using UnityEngine.UI;
 using UnityEngine.Video;
 
 public class StreamPlayer : MonoBehaviour
@@ -15,10 +14,14 @@ public class StreamPlayer : MonoBehaviour
         streamManager = manager;
     }
 
-    public GameObject PlayerInstance { get; private set; }
-    private MeshFilter PlayerInstanceMesh;
-    private MeshRenderer PlayerInstanceRenderer;
-    private Material PlayerInstanceMaterial;
+    public GameObject StreamPlayerManager;
+
+    public GameObject PlayerInstanceA;
+    public GameObject PlayerInstanceB;
+
+    private MeshFilter PlayerInstanceMeshA;
+    private MeshFilter PlayerInstanceMeshB;
+
     private VideoPlayer TexturePlayer;
     private AudioSource TextureAudio;
     public RenderTexture TextureRenderer;
@@ -39,6 +42,7 @@ public class StreamPlayer : MonoBehaviour
     private bool isCheckingBuffer = false;
     private bool isWaitingBuffer = false;
     private bool isNeedingBuffer = false;
+    private bool isUsingA = false;
 
 
     void Update()
@@ -57,35 +61,47 @@ public class StreamPlayer : MonoBehaviour
         MeshRotationOffset = rotationOffset;
         MeshScaleOffset = scaleOffset;
 
-        PlayerInstance = new GameObject("PlayerInstance");
-        PlayerInstance.transform.SetParent(this.transform);
+        StreamPlayerManager = new GameObject("StreamPlayerManager");
+        StreamPlayerManager.transform.SetParent(this.transform);
+        StreamPlayerManager.transform.localPosition = Vector3.zero;
 
-        PlayerInstanceMesh = PlayerInstance.AddComponent<MeshFilter>();
-        PlayerInstanceRenderer = PlayerInstance.AddComponent<MeshRenderer>();
 
-        TexturePlayer = PlayerInstance.AddComponent<VideoPlayer>();
         TextureRenderer = new RenderTexture(2048, 2048, 24);
         TextureRenderer.wrapMode = TextureWrapMode.Repeat;
 
-        TextureAudio = PlayerInstance.AddComponent<AudioSource>();
+        TextureAudio = StreamPlayerManager.AddComponent<AudioSource>();
         TextureAudio.playOnAwake = false;
         TextureAudio.spatialize = true;
 
+        TexturePlayer = StreamPlayerManager.AddComponent<VideoPlayer>();
         TexturePlayer.audioOutputMode = VideoAudioOutputMode.AudioSource;
         TexturePlayer.SetTargetAudioSource(0, TextureAudio);
-
-        PlayerInstanceMaterial = new Material(Shader.Find("Universal Render Pipeline/Lit"));
-        PlayerInstanceMaterial.mainTexture = TextureRenderer;
-        PlayerInstanceMaterial.SetTextureScale("_BaseMap", new Vector2(1, -1));
-        PlayerInstanceMaterial.SetFloat("_Smoothness", 0);
-
-        PlayerInstanceRenderer.material = PlayerInstanceMaterial;
 
         TexturePlayer.playOnAwake = false;
         TexturePlayer.isLooping = true;
         TexturePlayer.renderMode = VideoRenderMode.RenderTexture;
         TexturePlayer.targetTexture = TextureRenderer;
         TexturePlayer.url = $"{streamManager.LinkToFolder}/{streamManager.streamHandler.vvheader.texture}";
+
+        PlayerInstanceA = new GameObject("PlayerInstanceA");
+        PlayerInstanceB = new GameObject("PlayerInstanceB");
+
+        PlayerInstanceA.transform.SetParent(StreamPlayerManager.transform);
+        PlayerInstanceB.transform.SetParent(StreamPlayerManager.transform);
+
+        PlayerInstanceMeshA = PlayerInstanceA.AddComponent<MeshFilter>();
+        PlayerInstanceMeshB = PlayerInstanceB.AddComponent<MeshFilter>();
+
+        MeshRenderer MeshRendererA = PlayerInstanceA.AddComponent<MeshRenderer>();
+        MeshRenderer MeshRendererB = PlayerInstanceB.AddComponent<MeshRenderer>();
+
+        Material UniversalMaterial = new Material(Shader.Find("Universal Render Pipeline/Lit"));
+        UniversalMaterial.mainTexture = TextureRenderer;
+        UniversalMaterial.SetTextureScale("_BaseMap", new Vector2(1, -1));
+        UniversalMaterial.SetFloat("_Smoothness", 0);
+
+        MeshRendererA.sharedMaterial = UniversalMaterial;
+        MeshRendererB.sharedMaterial = UniversalMaterial;
 
         streamManager.SetDebugTexturePreview(TextureRenderer);
 
@@ -107,9 +123,14 @@ public class StreamPlayer : MonoBehaviour
 
         MeshPositionOffset += new Vector3(0, -max, 0);
 
-        PlayerInstance.transform.localPosition = MeshPositionOffset;
-        PlayerInstance.transform.localRotation = Quaternion.Euler(MeshRotationOffset);
-        PlayerInstance.transform.localScale = MeshScaleOffset;
+        PlayerInstanceA.transform.localPosition = MeshPositionOffset;
+        PlayerInstanceA.transform.localRotation = Quaternion.Euler(MeshRotationOffset);
+        PlayerInstanceA.transform.localScale = MeshScaleOffset;
+
+        PlayerInstanceB.transform.localPosition = MeshPositionOffset;
+        PlayerInstanceB.transform.localRotation = Quaternion.Euler(MeshRotationOffset);
+        PlayerInstanceB.transform.localScale = MeshScaleOffset;
+
         isOffsetApplied = true;
         streamManager.SendDebugText("Mesh Offset Applied", this);
     }
@@ -141,14 +162,39 @@ public class StreamPlayer : MonoBehaviour
     void DisplayFrame()
     {
         StartCheckBufferingChunk();
-        if (streamManager.streamContainer.FrameContainer[TargetFrame].isLoaded)
+
+        int NextFrame = TargetFrame + 1;
+        if (NextFrame >= streamManager.streamContainer.FrameContainer.Count)
+        {
+            NextFrame = NextFrame - streamManager.streamContainer.FrameContainer.Count;
+        }
+        if (streamManager.streamContainer.FrameContainer[TargetFrame].isLoaded
+        && streamManager.streamContainer.FrameContainer[NextFrame].isLoaded)
         {
             streamManager.streamFrameHandler.DroppingFrameAt(PlayFrame);
             PlayFrame = TargetFrame;
 
-            PlayerInstanceMesh.sharedMesh = null;
-            PlayerInstanceMesh.sharedMesh = streamManager.streamContainer.FrameContainer[PlayFrame].mesh;
+            if (isUsingA)
+            {
+                PlayerInstanceA.SetActive(false);
+                PlayerInstanceB.SetActive(true);
 
+                PlayerInstanceMeshA.sharedMesh = null;
+                PlayerInstanceMeshA.sharedMesh = streamManager.streamContainer.FrameContainer[NextFrame].mesh;
+
+
+                isUsingA = false;
+            }
+            else
+            {
+                PlayerInstanceA.SetActive(true);
+                PlayerInstanceB.SetActive(false);
+
+                PlayerInstanceMeshB.sharedMesh = null;
+                PlayerInstanceMeshB.sharedMesh = streamManager.streamContainer.FrameContainer[NextFrame].mesh;
+
+                isUsingA = true;
+            }
 
             streamManager.UpdateDebugPlayFrame(PlayFrame);
         }
@@ -307,7 +353,7 @@ public class StreamPlayer : MonoBehaviour
     public void Stop()
     {
         TexturePlayer.Stop();
-        PlayerInstanceMesh.mesh = null;
+        PlayerInstanceMeshA.mesh = null;
     }
     
     void OnDestroy()
@@ -316,10 +362,6 @@ public class StreamPlayer : MonoBehaviour
         {
             TextureRenderer.Release();
             Destroy(TextureRenderer);
-        }
-        if (PlayerInstanceMaterial != null)
-        {
-            Destroy(PlayerInstanceMaterial);
         }
     }
 }

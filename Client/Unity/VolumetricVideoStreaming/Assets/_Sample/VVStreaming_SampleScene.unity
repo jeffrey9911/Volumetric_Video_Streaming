@@ -1081,7 +1081,7 @@ MonoBehaviour:
   RotationOffset: {x: 0, y: 0, z: 0}
   ScaleOffset: {x: 1, y: 1, z: 1}
   ChunkForwardThresholdInSeconds: 1
-  ChunkForwardBufferingTimeInSeconds: 1
+  ChunkForwardBufferingTimeInSeconds: 3
   ChunkBufferDroppingTimeInSeconds: 1
 --- !u!4 &1189316556
 Transform:
